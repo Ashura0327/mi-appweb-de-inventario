@@ -4,15 +4,13 @@ let html5QrCode;
 
 // Base de datos de vendedores
 const vendedoresDB = new Map([
-    ["20556798", "Catalina"],
+    ["12345", "EDWIN"],
     ["45892345", "Juan David"],
     ["12234478", "Paola"]
 ]);
 
 const usuariosDB = new Map([
-    ["5035", { password: "clave", nombre: "Tienda de la 65", password_master: "master5035" }],
-    ["5115", { password: "clave", nombre: "Tienda Guayabal", password_master: "master5115" }],
-    ["5001", { password: "clave", nombre: "Tienda Centro", password_master: "master5001" }]
+    ["5035", { password: "503508", nombre: "OT VZ de la 65", password_master: "54321" }],
 ]);
 
 // Elementos del DOM
@@ -435,3 +433,4 @@ window.onload = () => {
     checkDeviceAndHideBodegueroField(); 
     checkDeviceAndHideCameraOption();
 };
+
