@@ -9,14 +9,13 @@ const vendedoresDB = new Map([
     ["12234478", "Paola"]
 ]);
 
-// Base de datos de usuarios y contraseñas
 const usuariosDB = new Map([
     ["5035", { password: "clave", nombre: "Tienda de la 65", password_master: "master5035" }],
     ["5115", { password: "clave", nombre: "Tienda Guayabal", password_master: "master5115" }],
     ["5001", { password: "clave", nombre: "Tienda Centro", password_master: "master5001" }]
 ]);
 
-// Elementos del DOM para el login
+// Elementos del DOM
 const loginContainer = document.getElementById('login-container');
 const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
@@ -29,7 +28,7 @@ const processDataBtn = document.getElementById('process-data-btn');
 const eanInput = document.getElementById('ean');
 const referenciaInput = document.getElementById('referencia');
 const colorInput = document.getElementById('color');
-const tallaInput = document.getElementById('talla');
+const tallaInput = document = document.getElementById('talla');
 const nombreVendedorInput = document.getElementById('nombreVendedor');
 const reportOutputDiv = document.getElementById('report-output');
 const reportContentPre = document.getElementById('report-content');
@@ -46,6 +45,9 @@ const readerDiv = document.getElementById('reader');
 const startScanBtn = document.getElementById('start-scan-btn');
 const stopScanBtn = document.getElementById('stop-scan-btn');
 
+const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// --- LÓGICA DE ALMACENAMIENTO LOCAL ---
 function guardarBaseDeDatos() {
     const objDB = Object.fromEntries(productosDB);
     localStorage.setItem('productosDB', JSON.stringify(objDB));
@@ -80,12 +82,7 @@ function limpiarEntradas() {
     renderHistory();
 }
 
-function enviarDatosAlUsuarioPrincipal() {
-    console.log(`📤 Enviando ${entradas.length} registros del día al usuario principal...`);
-    limpiarEntradas();
-    alert("¡Sincronización diaria completada! Los datos se han enviado y la sesión ha sido cerrada.");
-}
-
+// --- LÓGICA DE PANTALLA Y SESIÓN ---
 function checkLogin() {
     const lastLoginDate = localStorage.getItem('lastLoginDate');
     const today = new Date().toDateString();
@@ -96,11 +93,12 @@ function checkLogin() {
             loginContainer.classList.add('hidden');
             appContainer.classList.remove('hidden');
             tiendaNombreH1.textContent = `${loggedInUser}`;
+            cargarBaseDeDatos();
             cargarEntradas();
             return;
         }
     } else {
-        enviarDatosAlUsuarioPrincipal();
+        limpiarEntradas();
         localStorage.setItem('lastLoginDate', today);
     }
 
@@ -116,23 +114,29 @@ function login() {
     if (usuariosDB.has(username)) {
         const usuario = usuariosDB.get(username);
         
+        // Lógica para el usuario principal (password_master)
         if (password === usuario.password_master) {
             localStorage.setItem('loggedInUser', usuario.nombre);
+            localStorage.setItem('currentBodeguero', 'Usuario Principal'); 
             checkLogin();
-            bodegueroCodeInput.classList.add('hidden');
             alert(`¡Bienvenido, usuario principal de ${usuario.nombre}!`);
             return;
         }
 
+        // Lógica para el usuario normal (password)
         if (password === usuario.password) {
-            if (bodegueroCode.length > 0) {
-                 localStorage.setItem('loggedInUser', usuario.nombre);
-                 localStorage.setItem('currentBodeguero', bodegueroCode);
-                 checkLogin();
-                 alert(`¡Bienvenido, ${bodegueroCode} de ${usuario.nombre}!`);
-            } else {
-                alert('Por favor, ingresa tu código de bodeguero.');
+            if (isMobileDevice && bodegueroCode.length === 0) {
+                 alert('Por favor, ingresa tu código de bodeguero.');
+                 return;
             }
+
+            const finalBodegueroCode = isMobileDevice ? bodegueroCode : 'N/A (PC)';
+
+            localStorage.setItem('loggedInUser', usuario.nombre);
+            localStorage.setItem('currentBodeguero', finalBodegueroCode);
+            checkLogin();
+            alert(`¡Bienvenido, ${finalBodegueroCode} de ${usuario.nombre}!`);
+
         } else {
             alert('Contraseña incorrecta.');
         }
@@ -143,37 +147,21 @@ function login() {
 }
 
 function logout() {
-    if (confirm("¿Estás seguro de que quieres cerrar sesión y enviar los registros del día?")) {
-        enviarDatosAlUsuarioPrincipal();
-        localStorage.removeItem('loggedInUser');
-        localStorage.removeItem('currentBodeguero');
-        localStorage.removeItem('lastLoginDate');
-        checkLogin();
-        stopCameraScan(); 
+    if (entradas.length > 0) {
+        if (confirm("Hay registros pendientes. ¿Quieres generar y descargar el reporte antes de cerrar sesión?")) {
+            finalizarPrograma();
+            return;
+        }
     }
-}
-
-window.onload = () => {
-    cargarBaseDeDatos();
+    limpiarEntradas();
+    localStorage.removeItem('loggedInUser');
+    localStorage.removeItem('currentBodeguero');
+    localStorage.removeItem('lastLoginDate');
     checkLogin();
-    checkDeviceAndHideCameraOption();
-};
-
-setInterval(() => {
-    const now = new Date();
-    if (now.getHours() === 19 && now.getMinutes() === 30 && entradas.length > 0) {
-        enviarDatosAlUsuarioPrincipal();
-        localStorage.removeItem('loggedInUser');
-        localStorage.removeItem('currentBodeguero');
-        checkLogin();
-    }
-}, 60000); 
-
-function limpiarEan(ean) {
-    if (ean === null || ean === undefined) return '';
-    return String(ean).replace(/\s/g, '').trim();
+    stopCameraScan(); 
 }
 
+// --- LÓGICA DE PROCESO ---
 showDbBtn.addEventListener('click', () => {
     dbForm.classList.toggle('hidden');
 });
@@ -215,6 +203,25 @@ processDataBtn.addEventListener('click', () => {
     }
 });
 
+function limpiarEan(ean) {
+    if (ean === null || ean === undefined) return '';
+    return String(ean).replace(/\s/g, '').trim();
+}
+
+eanInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        processScannedCode(eanInput.value);
+    }
+});
+
+nombreVendedorInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        processScannedCode(nombreVendedorInput.value);
+    }
+});
+
 function processScannedCode(decodedText) {
     const ean = limpiarEan(decodedText);
     const producto = productosDB.get(ean);
@@ -245,20 +252,6 @@ function processScannedCode(decodedText) {
     }
 }
 
-eanInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        processScannedCode(eanInput.value);
-    }
-});
-
-nombreVendedorInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        processScannedCode(nombreVendedorInput.value);
-    }
-});
-
 function ingresarReferencia() {
     const ean = limpiarEan(eanInput.value);
     const nombreVendedor = nombreVendedorInput.value.trim();
@@ -273,15 +266,16 @@ function ingresarReferencia() {
         return;
     }
 
-    entradas.push({
+    const nuevaEntrada = {
         referencia: producto.referencia,
         color: producto.color,
         talla: producto.talla,
         nombreVendedor: nombreVendedor,
         bodeguero: bodeguero, 
         fechaHora: new Date().toLocaleString()
-    });
-
+    };
+    
+    entradas.push(nuevaEntrada); 
     guardarEntradas();
 
     eanInput.value = '';
@@ -294,12 +288,20 @@ function ingresarReferencia() {
 
 function finalizarPrograma() {
     if (entradas.length === 0) {
-        alert("No se ingresaron referencias. El programa ha finalizado.");
+        alert("No hay registros para generar el reporte.");
         return;
     }
-
+    const reporteCsv = procesarReporte(entradas);
+    const blob = new Blob([reporteCsv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
+    downloadLink.href = url;
+    downloadLink.download = `reporte_diario_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
+    
     reportOutputDiv.classList.remove('hidden');
-    procesarReporte(entradas);
+    reportContentPre.textContent = "Reporte listo para ser descargado.";
+    downloadBtn.classList.remove('hidden');
+
     stopCameraScan();
 }
 
@@ -324,39 +326,12 @@ function procesarReporte(entradas) {
         }
     }
 
-    let reporteDisplay = "--- Resumen de referencias ingresadas ---\n";
-    let articuloMasIngresado = null;
-    let maxCount = 0;
-
-    for (const item of reportePorArticulo.values()) {
-        const vendedores = item.vendedores.join(", ");
-        reporteDisplay += `- Referencia: ${item.referencia}, Color: ${item.color}, Talla: ${item.talla}\n`;
-        reporteDisplay += `  Cantidad: ${item.cantidad} unidades.\n`;
-        reporteDisplay += `  Vendedores que la ingresaron: ${vendedores}\n`;
-        reporteDisplay += `  Ingresado por: ${item.bodeguero} el ${item.fechaHora}\n\n`;
-
-        if (item.cantidad > maxCount) {
-            maxCount = item.cantidad;
-            articuloMasIngresado = item;
-        }
-    }
-    if (articuloMasIngresado) {
-        reporteDisplay += `--- El artículo más ingresado fue ---\n`;
-        reporteDisplay += `> Referencia: ${articuloMasIngresado.referencia}, Color: ${articuloMasIngresado.color}, Talla: ${articuloMasIngresado.talla}, con un total de ${maxCount} unidades.\n`;
-    }
-
-    reportContentPre.textContent = reporteDisplay;
-    downloadBtn.classList.remove('hidden');
-
     let csvContent = "Referencia,Color,Talla,Cantidad,Vendedores,Bodeguero,Fecha y Hora\n";
     for (const item of reportePorArticulo.values()) {
         const vendedores = item.vendedores.join("; ");
         csvContent += `${item.referencia},${item.color},${item.talla},${item.cantidad},"${vendedores}",${item.bodeguero},"${item.fechaHora}"\n`;
     }
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    downloadLink.href = url;
+    return csvContent;
 }
 
 function renderHistory() {
@@ -389,6 +364,7 @@ historyUl.addEventListener('click', (e) => {
     }
 });
 
+// --- LÓGICA DEL ESCÁNER ---
 async function startCameraScan() {
     if (html5QrCode && html5QrCode.isScanning) {
         console.warn("El escáner ya está activo.");
@@ -435,13 +411,27 @@ async function stopCameraScan() {
     stopScanBtn.classList.add('hidden');
 }
 
-// NUEVA: Función para detectar el dispositivo
+// --- FUNCIÓN PARA DETECTAR EL TIPO DE DISPOSITIVO ---
+function checkDeviceAndHideBodegueroField() {
+    if (!isMobileDevice) {
+        bodegueroCodeInput.style.display = 'none';
+    } else {
+        bodegueroCodeInput.style.display = 'block';
+    }
+}
+
+// --- FUNCIÓN PARA OCULTAR LA CÁMARA EN PC ---
 function checkDeviceAndHideCameraOption() {
-    // La expresión regular busca patrones comunes de agentes de usuario en dispositivos móviles
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    // Si no es un dispositivo móvil, ocultamos el botón de la cámara
-    if (!isMobile) {
+    if (!isMobileDevice) {
         startScanBtn.classList.add('hidden');
     }
 }
+
+// --- CONFIGURACIÓN INICIAL AL CARGAR LA PÁGINA ---
+window.onload = () => {
+    cargarBaseDeDatos();
+    cargarEntradas(); 
+    checkLogin();
+    checkDeviceAndHideBodegueroField(); 
+    checkDeviceAndHideCameraOption();
+};
