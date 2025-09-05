@@ -4,14 +4,15 @@ let html5QrCode;
 
 // Base de datos de vendedores
 const vendedoresDB = new Map([
-    ["53357", "EDWIN"],
+    ["20556798", "Catalina"],
     ["45892345", "Juan David"],
     ["12234478", "Paola"]
 ]);
 
 const usuariosDB = new Map([
-    ["5035", { password: "503508", nombre: "Tienda de la 65", password_master: "123345" }],
-    
+    ["5035", { password: "clave", nombre: "Tienda de la 65", password_master: "master5035" }],
+    ["5115", { password: "clave", nombre: "Tienda Guayabal", password_master: "master5115" }],
+    ["5001", { password: "clave", nombre: "Tienda Centro", password_master: "master5001" }]
 ]);
 
 // Elementos del DOM
@@ -82,32 +83,32 @@ function limpiarEntradas() {
 
 // --- LÓGICA DE PANTALLA Y SESIÓN ---
 function checkLogin() {
+    const loggedInUser = localStorage.getItem('loggedInUser');
     const lastLoginDate = localStorage.getItem('lastLoginDate');
     const today = new Date().toDateString();
-    
-    if (lastLoginDate === today) {
-        const loggedInUser = localStorage.getItem('loggedInUser');
-        if (loggedInUser) {
-            loginContainer.classList.add('hidden');
-            appContainer.classList.remove('hidden');
-            tiendaNombreH1.textContent = `${loggedInUser}`;
-            cargarBaseDeDatos();
-            cargarEntradas();
-            return;
-        }
-    } else {
-        limpiarEntradas();
-        localStorage.removeItem('lastLoginDate');
-    }
 
-    loginContainer.classList.remove('hidden');
-    appContainer.classList.add('hidden');
+    if (loggedInUser && lastLoginDate === today) {
+        // La sesión está activa y es del día de hoy
+        loginContainer.classList.add('hidden');
+        appContainer.classList.remove('hidden');
+        tiendaNombreH1.textContent = `Inventario ${loggedInUser}`;
+        cargarBaseDeDatos();
+        cargarEntradas();
+    } else {
+        // No hay sesión activa o el día ha cambiado
+        loginContainer.classList.remove('hidden');
+        appContainer.classList.add('hidden');
+        limpiarEntradas(); 
+        localStorage.removeItem('loggedInUser');
+        localStorage.removeItem('currentBodeguero');
+        localStorage.setItem('lastLoginDate', today); // Actualiza la fecha para el próximo inicio de sesión
+    }
 }
 
 function login() {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
-    const bodegueroCode = "N/A";
+    const bodegueroCode = "N/A"; // Valor por defecto
 
     if (usuariosDB.has(username)) {
         const usuario = usuariosDB.get(username);
@@ -212,7 +213,6 @@ nombreVendedorInput.addEventListener('keydown', (event) => {
 function processScannedCode(decodedText) {
     const codigoEscaneado = limpiarEan(decodedText);
     
-    // Si el campo de EAN está vacío, asumimos que se escanea un EAN de producto
     if (eanInput.value === '') { 
         const producto = productosDB.get(codigoEscaneado);
         if (producto) {
@@ -227,7 +227,6 @@ function processScannedCode(decodedText) {
             eanInput.focus();
         }
     } else { 
-        // Si el campo de EAN ya tiene un valor, asumimos que se escanea un código de vendedor
         const nombreVendedor = vendedoresDB.get(codigoEscaneado); 
         if (nombreVendedor) {
             nombreVendedorInput.value = nombreVendedor;
@@ -262,7 +261,7 @@ function ingresarReferencia() {
         talla: producto.talla,
         nombreVendedor: nombreVendedor,
         bodeguero: bodeguero, 
-        fechaHora: new Date().toLocaleString()
+        fechaHora: new Date().toLocaleString().replace(/, /g, ' ')
     };
     
     entradas.push(nuevaEntrada); 
@@ -285,12 +284,12 @@ function finalizarPrograma() {
     const blob = new Blob([reporteCsv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     
-    downloadLink.href = url;
-    downloadLink.download = `reporte_diario_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
-    
+    // Muestra el div del reporte y el botón de descarga
     reportOutputDiv.classList.remove('hidden');
+    downloadLink.href = url; // Asigna la URL al enlace
+    downloadLink.style.display = 'block'; // Asegura que el enlace sea visible
+    downloadBtn.classList.remove('hidden'); // Muestra el botón de descarga
     reportContentPre.textContent = "Reporte listo para ser descargado.";
-    downloadBtn.classList.remove('hidden');
 
     stopCameraScan();
 }
@@ -409,9 +408,9 @@ function checkDeviceAndHideCameraOption() {
 }
 
 // --- CONFIGURACIÓN INICIAL AL CARGAR LA PÁGINA ---
-window.onload = () => {
+document.addEventListener('DOMContentLoaded', () => {
     cargarBaseDeDatos();
     cargarEntradas(); 
     checkLogin();
     checkDeviceAndHideCameraOption();
-};
+});
