@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ingreso y Reporte de Referencias - Estilo Cuero</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+    <div id="login-container">
+        <h1>Bienvenido a Control de Inventario</h1>
+        <p>Por favor, inicia sesión para comenzar el día.</p>
+        <div class="input-group">
+            <label for="username">Código de Sede:</label>
+            <input type="text" id="username" placeholder="Ej: 5035">
+        </div>
+        <div class="input-group">
+            <label for="password">Contraseña:</label>
+            <input type="password" id="password" placeholder="Ingresa la contraseña">
+        </div>
+        <div class="input-group">
+            <label for="bodegueroCode">Código de Bodeguero:</label>
+            <input type="text" id="bodegueroCode" placeholder="Ej: B123">
+        </div>
+        <div class="btn-container">
+            <button class="btn" onclick="login()">Iniciar Sesión</button>
+        </div>
+    </div>
+
+    <div id="app-container" class="hidden">
+        <div class="header">
+            <h id="tienda-nombre"></h>
+        </div>
+        
+        <div class="btn-container">
+            <button class="btn" id="show-db-btn">Actualizar Base de Datos</button>
+        </div>
+
+        <div id="db-form" class="hidden">
+            <hr>
+            <h2>Actualizar Base de Datos</h2>
+            <p>Pega tu base de datos con las columnas: **EAN**, **Referencia**, **Color**, **Talla**.</p>
+            <div class="input-group">
+                <textarea id="excel-data" rows="8" placeholder="Copia y pega desde Excel..."></textarea>
+            </div>
+            <div class="btn-container">
+                <button class="btn" id="process-data-btn">Procesar y Guardar Base de Datos</button>
+            </div>
+            <hr>
+        </div>
+        
+        <div id="reader" class="hidden"></div>
+        <div class="btn-container">
+            <button class="btn" id="start-scan-btn" onclick="startCameraScan()"><i class="fas fa-camera"></i> Escanear con Cámara</button>
+            <button class="btn btn-danger hidden" id="stop-scan-btn" onclick="stopCameraScan()"><i class="fas fa-stop-circle"></i> Detener Escáner</button>
+        </div>
+        
+        <div class="input-group">
+            <label for="ean">Ingresa el EAN del producto:</label>
+            <input type="text" id="ean" placeholder="Escribe o escanea el EAN">
+        </div>
+        <div class="input-group">
+            <label for="referencia">Referencia:</label>
+            <input type="text" id="referencia" readonly>
+        </div>
+        <div class="input-group">
+            <label for="color">Color:</label>
+            <input type="text" id="color" readonly>
+        </div>
+        <div class="input-group">
+            <label for="talla">Talla:</label>
+            <input type="text" id="talla" readonly>
+        </div>
+        <div class="input-group">
+            <label for="nombreVendedor">Nombre del Vendedor:</label>
+            <input type="text" id="nombreVendedor" placeholder="Ej: Juan Pérez">
+        </div>
+
+        <div class="btn-container">
+            <button class="btn" onclick="ingresarReferencia()">Ingresar Referencia</button>
+            <button class="btn btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
+            <button class="btn btn-danger" onclick="finalizarPrograma()">Finalizar y Generar Reporte</button>
+        </div>
+    </div>
+    
+    <div id="history-list" class="hidden">
+        <h2>Historial de Registros</h2>
+        <ul id="history-ul"></ul>
+    </div>
+
+    <div id="report-output" class="hidden">
+        <h3>Reporte Generado</h3>
+        <pre id="report-content"></pre>
+        <a id="download-link" download="reporte_referencias.csv">
+            <button id="download-btn" class="hidden">Descargar Reporte CSV</button>
+        </a>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
