@@ -1,23 +1,24 @@
 const entradas = [];
 let productosDB = new Map();
-let html5QrCode; 
+let html5QrCode;
 
 // Base de datos de vendedores
 const vendedoresDB = new Map([
-    ["12345", "EDWIN"],
+    ["20556798", "Catalina"],
     ["45892345", "Juan David"],
     ["12234478", "Paola"]
 ]);
 
 const usuariosDB = new Map([
-    ["5035", { password: "503508", nombre: "OT VZ de la 65", password_master: "54321" }],
+    ["5035", { password: "clave", nombre: "Tienda de la 65", password_master: "master5035" }],
+    ["5115", { password: "clave", nombre: "Tienda Guayabal", password_master: "master5115" }],
+    ["5001", { password: "clave", nombre: "Tienda Centro", password_master: "master5001" }]
 ]);
 
 // Elementos del DOM
 const loginContainer = document.getElementById('login-container');
 const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
-const bodegueroCodeInput = document.getElementById('bodegueroCode');
 const appContainer = document.getElementById('app-container');
 const tiendaNombreH1 = document.getElementById('tienda-nombre');
 
@@ -26,7 +27,7 @@ const processDataBtn = document.getElementById('process-data-btn');
 const eanInput = document.getElementById('ean');
 const referenciaInput = document.getElementById('referencia');
 const colorInput = document.getElementById('color');
-const tallaInput = document = document.getElementById('talla');
+const tallaInput = document.getElementById('talla');
 const nombreVendedorInput = document.getElementById('nombreVendedor');
 const reportOutputDiv = document.getElementById('report-output');
 const reportContentPre = document.getElementById('report-content');
@@ -107,12 +108,11 @@ function checkLogin() {
 function login() {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
-    const bodegueroCode = bodegueroCodeInput.value.trim();
-    
+    const bodegueroCode = "N/A";
+
     if (usuariosDB.has(username)) {
         const usuario = usuariosDB.get(username);
         
-        // Lógica para el usuario principal (password_master)
         if (password === usuario.password_master) {
             localStorage.setItem('loggedInUser', usuario.nombre);
             localStorage.setItem('currentBodeguero', 'Usuario Principal'); 
@@ -121,24 +121,14 @@ function login() {
             return;
         }
 
-        // Lógica para el usuario normal (password)
         if (password === usuario.password) {
-            if (isMobileDevice && bodegueroCode.length === 0) {
-                 alert('Por favor, ingresa tu código de bodeguero.');
-                 return;
-            }
-
-            const finalBodegueroCode = isMobileDevice ? bodegueroCode : 'N/A (PC)';
-
             localStorage.setItem('loggedInUser', usuario.nombre);
-            localStorage.setItem('currentBodeguero', finalBodegueroCode);
+            localStorage.setItem('currentBodeguero', bodegueroCode);
             checkLogin();
-            alert(`¡Bienvenido, ${finalBodegueroCode} de ${usuario.nombre}!`);
-
+            alert(`¡Bienvenido, usuario de ${usuario.nombre}!`);
         } else {
             alert('Contraseña incorrecta.');
         }
-
     } else {
         alert('Código de sede no encontrado.');
     }
@@ -216,17 +206,18 @@ eanInput.addEventListener('keydown', (event) => {
 nombreVendedorInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
         event.preventDefault();
-        processScannedCode(nombreVendedorInput.value);
+        ingresarReferencia();
     }
 });
 
 function processScannedCode(decodedText) {
-    const ean = limpiarEan(decodedText);
-    const producto = productosDB.get(ean);
-
+    const codigoEscaneado = limpiarEan(decodedText);
+    
+    // Si el campo de EAN está vacío, asumimos que se escanea un EAN de producto
     if (eanInput.value === '') { 
-        eanInput.value = ean;
+        const producto = productosDB.get(codigoEscaneado);
         if (producto) {
+            eanInput.value = codigoEscaneado;
             referenciaInput.value = producto.referencia || '';
             colorInput.value = producto.color || '';
             tallaInput.value = producto.talla || '';
@@ -237,11 +228,12 @@ function processScannedCode(decodedText) {
             eanInput.focus();
         }
     } else { 
-        const nombreVendedor = vendedoresDB.get(ean); 
+        // Si el campo de EAN ya tiene un valor, asumimos que se escanea un código de vendedor
+        const nombreVendedor = vendedoresDB.get(codigoEscaneado); 
         if (nombreVendedor) {
             nombreVendedorInput.value = nombreVendedor;
             ingresarReferencia();
-            stopCameraScan(); 
+            stopCameraScan();
         } else {
             alert("Código de vendedor no encontrado. Por favor, verifica el código.");
             nombreVendedorInput.value = '';
@@ -265,6 +257,7 @@ function ingresarReferencia() {
     }
 
     const nuevaEntrada = {
+        ean: ean,
         referencia: producto.referencia,
         color: producto.color,
         talla: producto.talla,
@@ -409,15 +402,6 @@ async function stopCameraScan() {
     stopScanBtn.classList.add('hidden');
 }
 
-// --- FUNCIÓN PARA DETECTAR EL TIPO DE DISPOSITIVO ---
-function checkDeviceAndHideBodegueroField() {
-    if (!isMobileDevice) {
-        bodegueroCodeInput.style.display = 'none';
-    } else {
-        bodegueroCodeInput.style.display = 'block';
-    }
-}
-
 // --- FUNCIÓN PARA OCULTAR LA CÁMARA EN PC ---
 function checkDeviceAndHideCameraOption() {
     if (!isMobileDevice) {
@@ -430,7 +414,5 @@ window.onload = () => {
     cargarBaseDeDatos();
     cargarEntradas(); 
     checkLogin();
-    checkDeviceAndHideBodegueroField(); 
     checkDeviceAndHideCameraOption();
 };
-
